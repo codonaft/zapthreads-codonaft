@@ -2,7 +2,7 @@ import { modifyMutable, produce } from "solid-js/store";
 import { UnsignedEvent, Event, Nostr, VerifiedEvent } from "nostr-tools/core";
 import { normalizeURL as nostrNormalizeURL } from "nostr-tools/utils";
 import { Filter, matchFilter } from "nostr-tools/filter";
-import { SubCloser, AbstractPoolConstructorOptions, SubscribeManyParams as SubscribeManyParamsDefault } from "nostr-tools/pool";
+import { SubCloser, SubscribeManyParams as SubscribeManyParamsDefault } from "nostr-tools/pool";
 import { AbstractRelay as AbstractRelay, SubscriptionParams, Subscription, type AbstractRelayConstructorOptions } from "nostr-tools/abstract-relay";
 import { getEventHash, verifyEvent } from "nostr-tools/pure";
 import { Relay, RelayRecord } from "nostr-tools/relay";
@@ -41,7 +41,7 @@ class PrioritizedPool {
   private eventsCount: { [relay: string]: number; } = {};
   private eventsTs: { [key: string]: number; } = {};
 
-  constructor(opts: AbstractPoolConstructorOptions) {
+  constructor(opts: AbstractRelayConstructorOptions) {
     this.verifyEvent = opts.verifyEvent
     this._WebSocket = opts.websocketImplementation
   }
@@ -53,15 +53,14 @@ class PrioritizedPool {
         verifyEvent: this.verifyEvent,
         websocketImplementation: this._WebSocket,
       });
-      relay.connectionTimeout = SHORT_TIMEOUT;
-      relay._onauth = _ => {
-        if (store.readRelays.includes(url)) {
-          this.updateRelayInfo(url, { readAuth: true });
-        }
-      };
       this.relays.set(url, relay);
     }
-    await relay.connect()
+    // The connection timeout is now passed per connect() call, and relays
+    // that require NIP-42 AUTH to read are detected from the subscription
+    // close reason (see handleClose) — nostr-tools no longer exposes the
+    // connectionTimeout property or the private _onauth hook the previous
+    // detection relied on.
+    await relay.connect({ timeout: SHORT_TIMEOUT })
 
     return relay
   }
@@ -105,7 +104,7 @@ class PrioritizedPool {
 
     if (loggedIn) {
       const pk = signersStore.active!.pk;
-      externalRelays = await window.nostr!.getRelays();
+      externalRelays = window.nostr!.getRelays ? await window.nostr!.getRelays() : {};
       if (!relaysAreOk(externalRelays)) {
         const profileRelays = await find('profileRelays', IDBKeyRange.only(pk));
         if (profileRelays) {

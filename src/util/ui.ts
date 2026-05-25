@@ -4,7 +4,7 @@ import { decode } from "nostr-tools/nip19";
 import { Filter } from "nostr-tools/filter";
 import { Event } from "nostr-tools/core";
 import { ShortTextNote, Metadata, Highlights, Reaction, Zap, Report, CommunityDefinition } from "nostr-tools/kinds";
-import { matchAll, replaceAll } from "nostr-tools/nip27";
+import { matchAll, replaceAll } from "./nip27.ts";
 import { Remarkable } from 'remarkable';
 import { linkify } from 'remarkable/linkify';
 import { findAll, save } from "./db.ts";
